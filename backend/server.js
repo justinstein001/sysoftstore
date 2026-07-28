@@ -204,11 +204,9 @@ app.post('/api/initiate-payment', async (req, res, next) => {
     let phone = cleanText(req.body.phone, 20).replace(/[\s+-]/g, '');
     if (phone.startsWith('0')) phone = `250${phone.slice(1)}`;
 
-    // Define your minimum and maximum limits here
-    const MIN_AMOUNT = 100;       // Minimum allowed amount in RWF
-    const MAX_AMOUNT = 10000000;   // Maximum allowed amount in RWF
+    const MIN_AMOUNT = 100;
+    const MAX_AMOUNT = 10000000;
 
-    // Check if amount is valid and within the min/max range
     if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT || !/^2507\d{8}$/.test(phone)) {
       throw httpError(`Amount must be between ${MIN_AMOUNT.toLocaleString()} RWF and ${MAX_AMOUNT.toLocaleString()} RWF, and phone number must be valid.`);
     }
@@ -217,21 +215,34 @@ app.post('/api/initiate-payment', async (req, res, next) => {
       throw httpError('Payment gateway is not configured.', 503);
     }
 
+    // 1. Authorize with explicit Accept header
     const auth = await axios.post('https://payments.paypack.rw/api/auth/agents/authorize', { 
       client_id: process.env.PAYPACK_CLIENT_ID, 
       client_secret: process.env.PAYPACK_CLIENT_SECRET 
-    }, { timeout: 15000 });
+    }, { 
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json' 
+      }, 
+      timeout: 15000 
+    });
 
+    // 2. Trigger Cash-in with explicit headers
     const payment = await axios.post('https://payments.paypack.rw/api/transactions/cashin', { 
       amount, 
       number: phone 
     }, { 
-      headers: { Authorization: `Bearer ${auth.data.access}` }, 
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${auth.data.access}` 
+      }, 
       timeout: 15000 
     });
 
     res.json({ success: true, txRef: payment.data.ref });
   } catch (error) { 
+    console.error("PAYPACK ERROR DETAILS:", error.response?.data || error.message);
     next(error); 
   }
 });
