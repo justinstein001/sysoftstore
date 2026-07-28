@@ -32,13 +32,24 @@
 
         .product-item-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
         .product-item-row:last-child { border-bottom: none; }
+        /* Professional dashboard upgrade */
+        :root { --surface:#111c30; --surface-2:#16233a; --input:#0b1324; --accent:#5b8cff; --accent-soft:rgba(91,140,255,.14); --shadow:0 18px 42px rgba(0,0,0,.22); }
+        body { padding:0; background:radial-gradient(circle at 15% -10%,#1d3970 0,transparent 30%),var(--bg-main); }
+        .container { max-width:1440px; padding:24px; box-sizing:border-box; }
+        header { background:rgba(17,28,48,.88); backdrop-filter:blur(14px); padding:17px 20px; border-radius:16px; box-shadow:var(--shadow); position:sticky; top:14px; z-index:20; }
+        .brand-kicker { font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:#9fbbff; font-weight:800; margin-bottom:2px; }.brand-title { margin:0; font-size:22px; letter-spacing:-.8px; }.header-status{display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:12px}.online-dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px rgba(16,185,129,.13)}
+        .dashboard-intro { display:flex; justify-content:space-between; align-items:end; gap:16px; margin:30px 0 18px; }.dashboard-intro h1{font-size:26px;margin:0;letter-spacing:-1px}.dashboard-intro p{margin:4px 0 0;color:var(--text-muted)}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:25px}.stat{background:linear-gradient(135deg,var(--surface),var(--surface-2));border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow)}.stat-label{color:var(--text-muted);font-size:12px;font-weight:700}.stat-value{font-size:24px;font-weight:800;margin-top:5px;letter-spacing:-1px}.stat-note{font-size:11px;color:#9fbbff;margin-top:4px}
+        .card{background:rgba(17,28,48,.92);border-radius:16px;padding:20px;box-shadow:var(--shadow)}.card-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}.card-title h3{margin:0;font-size:16px}.card-subtitle{font-size:12px;color:var(--text-muted);margin:4px 0 15px}th{background:#0c1525;position:sticky;top:0}.form-group input,.form-group textarea{background:var(--input);padding:11px}.form-group input:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}.btn-action{border-radius:9px;transition:transform .16s,filter .16s}.btn-action:hover{transform:translateY(-1px);filter:brightness(1.08)}.btn-primary{background:var(--accent);color:#fff}.btn-muted{background:#263751;color:#fff}
+        #productDirectoryList{background:#0c1525!important;padding:4px 10px}.product-item-row{gap:12px;padding:13px 4px}.product-item-row:hover{background:rgba(91,140,255,.06)}.auth-mark{width:45px;height:45px;border-radius:13px;display:grid;place-items:center;margin:0 auto 14px;background:var(--accent-soft);color:#a8c2ff;font-size:23px}@media(max-width:850px){.stats{grid-template-columns:repeat(2,1fr)}.dashboard-intro{align-items:start;flex-direction:column}}@media(max-width:600px){.container{padding:12px}.stats{gap:9px}.stat{padding:13px}.stat-value{font-size:20px}header{top:8px;padding:14px}.product-item-row{align-items:flex-start;flex-direction:column}.product-item-row>div:last-child{width:100%}.product-item-row>div:last-child button{width:calc(50% - 3px)}.dashboard-intro{margin-top:22px}}
     </style>
 </head>
 <body>
 
 <div id="authScreen">
     <div class="login-box">
-        <h3 style="margin-top:0; text-align:center; font-size:22px; letter-spacing:-0.5px;">Terminal Gateway</h3>
+        <div class="auth-mark">S</div>
+        <h3 style="margin-top:0; text-align:center; font-size:22px; letter-spacing:-0.5px;">SYSOFT Admin</h3>
+        <p style="text-align:center; color:var(--text-muted); font-size:13px; margin:-8px 0 22px;">Sign in to manage your store.</p>
         <form onsubmit="executeAdminAuth(event)">
             <div class="form-group">
                 <label>Administrative User</label>
@@ -48,20 +59,28 @@
                 <label>Secure Password Key</label>
                 <input type="password" id="authPass" required placeholder="Enter password">
             </div>
-            <button type="submit" class="btn-action" style="background:var(--primary); color:white; width:100%; padding:12px; margin-top:10px;">Sign In</button>
+            <button type="submit" class="btn-action btn-primary" style="width:100%; padding:12px; margin-top:10px;">Sign In securely</button>
         </form>
     </div>
 </div>
 
 <div class="container" id="mainDashboard" style="display: none;">
     <header>
-        <h2 style="margin:0; font-size:20px; font-weight:700;">SYSOFT Console Board</h2>
-        <button class="btn-action" style="background: #475569; color: white;" onclick="logoutAdmin()">Secure Exit</button>
+        <div><div class="brand-kicker">Store operations</div><h2 class="brand-title">SYSOFT Admin Console</h2></div>
+        <div style="display:flex; gap:14px; align-items:center;"><div class="header-status"><span class="online-dot"></span>System online</div><button class="btn-action btn-muted" onclick="logoutAdmin()">Sign out</button></div>
     </header>
+
+    <section class="dashboard-intro"><div><h1>Welcome back</h1><p>Keep track of orders, products and stock from one place.</p></div><button class="btn-action btn-primary" onclick="document.getElementById('prodName').focus()">+ Add a product</button></section>
+    <section class="stats">
+        <div class="stat"><div class="stat-label">Total orders</div><div id="statOrders" class="stat-value">—</div><div class="stat-note">All recorded orders</div></div>
+        <div class="stat"><div class="stat-label">Pending orders</div><div id="statPending" class="stat-value">—</div><div class="stat-note">Need your review</div></div>
+        <div class="stat"><div class="stat-label">Order value</div><div id="statRevenue" class="stat-value">—</div><div class="stat-note">Recorded order total</div></div>
+        <div class="stat"><div class="stat-label">Products in store</div><div id="statProducts" class="stat-value">—</div><div id="statStock" class="stat-note">Checking stock…</div></div>
+    </section>
 
     <div class="grid">
         <div class="card">
-            <h3 style="margin-top:0; font-size:16px;">🛒 Real-time Dispatch Logs</h3>
+            <div class="card-title"><h3>Order management</h3><span class="status-badge status-pending">Live data</span></div><p class="card-subtitle">Review payment status, delivery details and customer information.</p>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -83,7 +102,7 @@
 
         <div>
             <div class="card">
-                <h3 style="margin-top:0; font-size:16px;" id="formPanelTitle">📦 Deploy New Stock Item</h3>
+                <div class="card-title"><h3 id="formPanelTitle">Add a product</h3></div><p class="card-subtitle">Create a new listing or edit an existing one.</p>
                 <form id="productForm" onsubmit="handleProductUpload(event)">
                     <div class="form-group">
                         <label>Product Title Name</label>
@@ -107,13 +126,13 @@
                         <label id="imageFieldLabel">Attach Product Display Image</label>
                         <input type="file" id="prodImage" accept="image/*" required style="border:none; padding:4px 0; background:none;">
                     </div>
-                    <button type="submit" id="submitFormBtn" class="btn-action" style="background:var(--primary); color:white; padding:12px; width:100%; margin-top:5px;">Upload Asset Instance</button>
-                    <button type="button" id="cancelEditBtn" class="btn-action" style="background:#475569; color:white; padding:10px; width:100%; margin-top:8px; display:none;" onclick="resetProductFormMode()">Cancel Modification</button>
+                    <button type="submit" id="submitFormBtn" class="btn-action btn-primary" style="padding:12px; width:100%; margin-top:5px;">Save product</button>
+                    <button type="button" id="cancelEditBtn" class="btn-action btn-muted" style="padding:10px; width:100%; margin-top:8px; display:none;" onclick="resetProductFormMode()">Cancel edit</button>
                 </form>
             </div>
 
             <div class="card">
-                <h3 style="margin-top:0; font-size:16px;">📁 Active Product Directory</h3>
+                <div class="card-title"><h3>Product directory</h3><span id="directoryCount" class="status-badge status-completed">0 products</span></div><p class="card-subtitle">Edit products or check remaining stock.</p>
                 <div id="productDirectoryList" style="max-height:350px; overflow-y:auto; margin-top:10px; background:#0b111e; border-radius:8px; border:1px solid var(--border);"></div>
             </div>
         </div>
@@ -121,10 +140,11 @@
 </div>
 
 <script>
-    const API_BASE = 'https://sysoft-server.onrender.com';
+    const API_BASE = 'https://sysoft-project.vercel.app';
     
     let dynamicSessionToken = localStorage.getItem('adminToken') || null;
     let activeEditingProductId = null;
+    let inventoryProductsById = new Map();
 
     // Check if token exists on load
     window.addEventListener('DOMContentLoaded', () => {
@@ -184,6 +204,11 @@
             }
 
             const orders = await res.json();
+            const pendingOrders = orders.filter(order => order.payment_status === 'PENDING').length;
+            const recordedValue = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+            document.getElementById('statOrders').textContent = orders.length;
+            document.getElementById('statPending').textContent = pendingOrders;
+            document.getElementById('statRevenue').textContent = `${Math.round(recordedValue).toLocaleString()} RWF`;
             tbody.innerHTML = '';
             if(orders.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; opacity:0.5;">No purchase records processed yet.</td></tr>';
@@ -315,6 +340,13 @@
         try {
             const res = await fetch(`${API_BASE}/api/products`);
             const products = await res.json();
+            const lowStock = products.filter(product => Number(product.stock_quantity) <= 5).length;
+            document.getElementById('statProducts').textContent = products.length;
+            document.getElementById('statStock').textContent = lowStock ? `${lowStock} low-stock item${lowStock === 1 ? '' : 's'}` : 'Stock levels look good';
+            document.getElementById('directoryCount').textContent = `${products.length} product${products.length === 1 ? '' : 's'}`;
+            inventoryProductsById = new Map(
+                products.map(product => [String(product.id), product])
+            );
             directory.innerHTML = '';
             
             if(products.length === 0) {
@@ -334,7 +366,7 @@
                             </div>
                         </div>
                         <div style="display:flex;">
-                            <button class="btn-action btn-edit" onclick="setupProductFormForEdit(${JSON.stringify(p).replace(/"/g, '"')})">Edit</button>
+                            <button type="button" class="btn-action btn-edit" onclick="editProductById(${Number(p.id)})">Edit</button>
                             <button class="btn-action btn-delete" style="margin:0;" onclick="removeProductInstance(${p.id})">Delete</button>
                         </div>
                     </div>`;
@@ -342,9 +374,18 @@
         } catch (err) { directory.innerHTML = '<p style="padding:15px; color:var(--danger);">Error loading directory matrix.</p>'; }
     }
 
+    function editProductById(id) {
+        const product = inventoryProductsById.get(String(id));
+        if (!product) {
+            alert('Product data could not be found. Refresh the product list and try again.');
+            return;
+        }
+        setupProductFormForEdit(product);
+    }
+
     function setupProductFormForEdit(product) {
         activeEditingProductId = product.id;
-        document.getElementById('formPanelTitle').innerText = "🔄 Modify Inventory Entry";
+        document.getElementById('formPanelTitle').innerText = "Edit product";
         document.getElementById('prodName').value = product.name;
         document.getElementById('prodPrice').value = product.price;
         document.getElementById('prodStock').value = product.stock_quantity;
@@ -353,7 +394,7 @@
         document.getElementById('prodImage').required = false;
         document.getElementById('imageFieldLabel').innerText = "Attach Product Display Image (Leave blank to keep old file)";
         
-        document.getElementById('submitFormBtn').innerText = "Save Asset Structural Changes";
+        document.getElementById('submitFormBtn').innerText = "Save changes";
         document.getElementById('cancelEditBtn').style.display = "block";
         document.getElementById('prodName').focus();
     }
@@ -361,10 +402,10 @@
     function resetProductFormMode() {
         activeEditingProductId = null;
         document.getElementById('productForm').reset();
-        document.getElementById('formPanelTitle').innerText = "📦 Deploy New Stock Item";
+        document.getElementById('formPanelTitle').innerText = "Add a product";
         document.getElementById('prodImage').required = true;
         document.getElementById('imageFieldLabel').innerText = "Attach Product Display Image";
-        document.getElementById('submitFormBtn').innerText = "Upload Asset Instance";
+        document.getElementById('submitFormBtn').innerText = "Save product";
         document.getElementById('cancelEditBtn').style.display = "none";
     }
 
