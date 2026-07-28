@@ -140,28 +140,13 @@ app.post('/api/admin/login', async (req, res, next) => {
   try {
     const username = cleanText(req.body.username, 100);
     const password = String(req.body.password || '');
-    if (!username || !password) throw httpError('Username and password are required.');
-    if (!process.env.JWT_SECRET) throw httpError('Server login is not configured.', 503);
-
+    
     const [admins] = await db.query('SELECT id, username, password FROM admins WHERE username = ? LIMIT 1', [username]);
     const admin = admins[0];
-    if (!admin) return res.status(401).json({ success: false, message: 'Invalid username or password.' });
-
-    let passwordMatches = false;
-    if (String(admin.password).startsWith('$2')) {
-      passwordMatches = await bcrypt.compare(password, admin.password);
-    } else {
-      // Temporary compatibility for existing MD5 rows. It upgrades the row after a successful login.
-      const legacyHash = crypto.createHash('md5').update(password).digest('hex');
-      const storedLegacyHash = String(admin.password);
-      passwordMatches = storedLegacyHash.length === legacyHash.length
-        && crypto.timingSafeEqual(Buffer.from(legacyHash), Buffer.from(storedLegacyHash));
-      if (passwordMatches) {
-        const upgradedHash = await bcrypt.hash(password, 12);
-        await db.query('UPDATE admins SET password = ? WHERE id = ?', [upgradedHash, admin.id]);
-      }
+    
+    if (!admin || admin.password !== password) {
+      return res.status(401).json({ success: false, message: 'Invalid username or password.' });
     }
-    if (!passwordMatches) return res.status(401).json({ success: false, message: 'Invalid username or password.' });
 
     const token = jwt.sign({ adminId: admin.id, username: admin.username }, process.env.JWT_SECRET, { expiresIn: '8h' });
     res.json({ success: true, token, expiresIn: '8h' });
