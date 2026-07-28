@@ -203,12 +203,37 @@ app.post('/api/initiate-payment', async (req, res, next) => {
     const amount = Number(req.body.amount);
     let phone = cleanText(req.body.phone, 20).replace(/[\s+-]/g, '');
     if (phone.startsWith('0')) phone = `250${phone.slice(1)}`;
-    if (!Number.isFinite(amount) || amount <= 0 || !/^2507\d{8}$/.test(phone)) throw httpError('Enter a valid Rwandan phone number and amount.');
-    if (!process.env.PAYPACK_CLIENT_ID || !process.env.PAYPACK_CLIENT_SECRET) throw httpError('Payment gateway is not configured.', 503);
-    const auth = await axios.post('https://payments.paypack.rw/api/auth/agents/authorize', { client_id: process.env.PAYPACK_CLIENT_ID, client_secret: process.env.PAYPACK_CLIENT_SECRET }, { timeout: 15000 });
-    const payment = await axios.post('https://payments.paypack.rw/api/transactions/cashin', { amount, number: phone }, { headers: { Authorization: `Bearer ${auth.data.access}` }, timeout: 15000 });
+
+    // Define your minimum and maximum limits here
+    const MIN_AMOUNT = 100;       // Minimum allowed amount in RWF
+    const MAX_AMOUNT = 10000000;   // Maximum allowed amount in RWF
+
+    // Check if amount is valid and within the min/max range
+    if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT || !/^2507\d{8}$/.test(phone)) {
+      throw httpError(`Amount must be between ${MIN_AMOUNT.toLocaleString()} RWF and ${MAX_AMOUNT.toLocaleString()} RWF, and phone number must be valid.`);
+    }
+
+    if (!process.env.PAYPACK_CLIENT_ID || !process.env.PAYPACK_CLIENT_SECRET) {
+      throw httpError('Payment gateway is not configured.', 503);
+    }
+
+    const auth = await axios.post('https://payments.paypack.rw/api/auth/agents/authorize', { 
+      client_id: process.env.PAYPACK_CLIENT_ID, 
+      client_secret: process.env.PAYPACK_CLIENT_SECRET 
+    }, { timeout: 15000 });
+
+    const payment = await axios.post('https://payments.paypack.rw/api/transactions/cashin', { 
+      amount, 
+      number: phone 
+    }, { 
+      headers: { Authorization: `Bearer ${auth.data.access}` }, 
+      timeout: 15000 
+    });
+
     res.json({ success: true, txRef: payment.data.ref });
-  } catch (error) { next(error); }
+  } catch (error) { 
+    next(error); 
+  }
 });
 
 app.post('/api/checkout', async (req, res, next) => {
