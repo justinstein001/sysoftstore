@@ -143,7 +143,56 @@
     function renderCart(){const quantity=cart.reduce((sum,item)=>sum+item.quantity,0);document.getElementById('cartCount').textContent=quantity;document.getElementById('cartLabel').textContent=quantity?`${quantity} item${quantity===1?'':'s'} selected`:'Your cart is empty';document.getElementById('cartLines').innerHTML=cart.length?cart.map(item=>`<div class="line-item"><div><div class="line-name">${escapeHtml(item.name)}</div><div class="line-meta">${money(item.price)} each</div></div><div class="qty"><button onclick="changeQuantity(${item.id},-1)">−</button><b>${item.quantity}</b><button onclick="changeQuantity(${item.id},1)">+</button></div></div>`).join(''):'<div class="empty">Your cart is empty.<br>Add a product to get started.</div>';document.getElementById('cartTotal').textContent=`Total: ${money(cartTotal())}`;document.getElementById('checkoutOpen').disabled=!cart.length;document.getElementById('checkoutOpen').style.opacity=cart.length?'1':'.5';}
     function openCart(){renderCart();document.getElementById('cartOverlay').classList.add('open')}function closeCart(){document.getElementById('cartOverlay').classList.remove('open')}function openCheckout(){if(!cart.length)return;closeCart();document.getElementById('checkoutTotal').textContent=money(cartTotal());document.getElementById('checkoutOverlay').classList.add('open')}function closeCheckout(){document.getElementById('checkoutOverlay').classList.remove('open')}
     document.getElementById('search').addEventListener('input',renderProducts);
-    document.getElementById('checkoutForm').addEventListener('submit',async event=>{event.preventDefault();if(!cart.length)return;const button=document.getElementById('payButton'),status=document.getElementById('checkoutStatus');const phone=document.getElementById('phone').value.trim();button.disabled=true;button.textContent='Sending payment request…';status.classList.remove('hidden');status.textContent='Please wait while we send the Mobile Money prompt.';try{const payment=await fetch(`${BACKEND_API}/api/initiate-payment`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,amount:cartTotal()})});const paymentData=await payment.json();if(!payment.ok||!paymentData.success)throw new Error(paymentData.error||'Payment request failed.');status.textContent='Payment request sent. Approve it on your phone, then we will record your order.';const order=await fetch(`${BACKEND_API}/api/checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fullName:document.getElementById('name').value.trim(),email:document.getElementById('email').value.trim(),phone,district:document.getElementById('district').value,deliveryAddress:document.getElementById('address').value.trim(),txRef:paymentData.txRef,totalAmount:cartTotal(),items:cart})});if(!order.ok)throw new Error('Your payment request was sent, but we could not save the order. Contact support with your phone number.');cart=[];saveCart();event.target.reset();status.textContent='Order received! Please approve the Mobile Money prompt on your phone. Our team will confirm the payment and delivery.';button.textContent='Order received';}catch(error){status.textContent=error.message||'Something went wrong. Please try again.';button.disabled=false;button.textContent='Request Mobile Money payment';}});
+   document.getElementById('checkoutForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  if(!cart.length) return;
+  const button = document.getElementById('payButton'), status = document.getElementById('checkoutStatus');
+  const phone = document.getElementById('phone').value.trim();
+  button.disabled = true;
+  button.textContent = 'Sending payment request…';
+  status.classList.remove('hidden');
+  status.textContent = 'Please wait while we send the Mobile Money prompt.';
+  
+  try {
+    const payment = await fetch(`${BACKEND_API}/api/initiate-payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, amount: cartTotal() })
+    });
+    
+    const paymentData = await payment.json();
+    if (!payment.ok || !paymentData.success) throw new Error(paymentData.error || 'Payment request failed.');
+    
+    status.textContent = 'Payment request sent. Approve it on your phone, then we will record your order.';
+    
+    const order = await fetch(`${BACKEND_API}/api/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone,
+        district: document.getElementById('district').value,
+        deliveryAddress: document.getElementById('address').value.trim(),
+        txRef: paymentData.txRef,
+        totalAmount: cartTotal(),
+        items: cart
+      })
+    });
+    
+    if (!order.ok) throw new Error('Your payment request was sent, but we could not save the order. Contact support with your phone number.');
+    
+    cart = [];
+    saveCart();
+    event.target.reset();
+    status.textContent = 'Order received! Please approve the Mobile Money prompt on your phone. Our team will confirm the payment and delivery.';
+    button.textContent = 'Order received';
+  } catch (error) {
+    status.textContent = error.message || 'Something went wrong. Please try again.';
+    button.disabled = false;
+    button.textContent = 'Request Mobile Money payment';
+  }
+});
     loadProducts();renderCart();
   </script>
 </body>
