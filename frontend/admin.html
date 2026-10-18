@@ -260,7 +260,7 @@
 <script>
 (() => {
   'use strict';
-  const API = 'https://sysoftstore.vercel.app';
+  const API ='https://sysoftstore.vercel.app';
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const fmt = new Intl.NumberFormat('en-US'), money = v => `${fmt.format(Math.round(Number(v) || 0))} RWF`;
   // Everything that comes from customers or the database goes through esc() before it touches the page.
