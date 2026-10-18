@@ -1,7 +1,7 @@
 {
-  "name": "sysoft-store",
+  "name": "sysoftstore",
   "version": "1.0.0",
-  "description": "Three files replace your current ones. **No new packages are needed**, because everything uses the libraries you already have (express, mysql2, cors, multer, axios, jsonwebtoken, bcryptjs, cloudinary).",
+  "description": "",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -10,5 +10,17 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.18.1",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
+    "mysql2": "^3.22.5",
+    "nodemailer": "^9.0.3",
+    "resend": "^6.17.1"
+  }
 }
