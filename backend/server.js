@@ -23,6 +23,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const os = require('node:os');
 
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
