@@ -77,13 +77,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Paypack-Secret'],
 }));
-//changed
-app.use(express.json({
-  limit: '1mb',
-  verify: (req, res, buf) => {
-    req.rawBody = Buffer.from(buf);
-  },
-}));
+app.use(express.json({ limit: '1mb' }));
 
 /* ---- tiny in-memory rate limiter (no extra dependency; per server instance) ---- */
 const clientIp = req => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
@@ -419,54 +413,25 @@ async function paypackToken(forceRefresh = false) {
   return paypackAuth.token;
 }
 
-async function paypackRequest(method, url, data, extraHeaders = {}) {
+async function paypackRequest(method, url, data) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const token = await paypackToken(attempt > 0);
-
     try {
       return await axios({
-        method,
-        url,
-        data,
-        timeout: 15000,
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-          ...extraHeaders,
-        },
+        method, url, data, timeout: 15000,
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` },
       });
     } catch (error) {
-      if (error.response?.status === 401 && attempt === 0) continue;
+      if (error.response?.status === 401 && attempt === 0) continue;   // token expired: get a new one and retry once
       throw error;
     }
   }
-
   throw new Error('Paypack request failed.');
 }
 
 async function paypackCashin(amount, number) {
-  const mode = String(
-    process.env.PAYPACK_WEBHOOK_MODE || ''
-  ).toLowerCase();
-
-  if (!['development', 'production'].includes(mode)) {
-    throw new Error(
-      'PAYPACK_WEBHOOK_MODE must be development or production.'
-    );
-  }
-
-  const response = await paypackRequest(
-    'post',
-    `${PAYPACK_BASE}/transactions/cashin`,
-    { amount, number },
-    { 'X-Webhook-Mode': mode }
-  );
-
-  if (!response.data?.ref) {
-    throw new Error('Paypack did not return a transaction reference.');
-  }
-
+  const response = await paypackRequest('post', `${PAYPACK_BASE}/transactions/cashin`, { amount, number });
+  if (!response.data?.ref) throw new Error('Paypack did not return a transaction reference.');
   return String(response.data.ref);
 }
 
@@ -735,9 +700,6 @@ function verifyAdminSession(req, res, next) {
 app.get('/robots.txt', (_req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /admin\nDisallow: /api/\n'));
 
 app.use('/api', ready);
-app.head('/api/paypack/webhook', (_req, res) => {
-  res.sendStatus(200);
-});
 
 app.get('/api/health', ah(async (_req, res) => {
   await db.query('SELECT 1');
@@ -935,51 +897,18 @@ app.post('/api/orders/track', trackLimiter, ah(async (req, res) => {
 
 // Paypack calls this when a payment finishes. We never trust the body: we re-check with Paypack.
 app.post('/api/paypack/webhook', ah(async (req, res) => {
-  const secret = process.env.PAYPACK_WEBHOOK_SIGN_KEY;
-  const signature = req.get('x-paypack-signature');
-
-  if (!secret || !signature || !req.rawBody) {
-    return res.status(401).json({
-      success: false,
-      error: 'Webhook signature configuration is missing.',
-    });
+  const secret = process.env.PAYPACK_WEBHOOK_SECRET;
+  if (secret) {
+    const given = String(req.get('x-paypack-secret') || req.query.secret || '');
+    const ok = given.length === secret.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(secret));
+    if (!ok) return res.status(401).json({ success: false });
   }
-
-  const expected = crypto
-    .createHmac('sha256', secret)
-    .update(req.rawBody)
-    .digest('base64');
-
-  const expectedBuffer = Buffer.from(expected);
-  const signatureBuffer = Buffer.from(signature);
-
-  if (
-    expectedBuffer.length !== signatureBuffer.length ||
-    !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)
-  ) {
-    return res.status(401).json({ success: false });
+  const ref = cleanText(req.body?.data?.ref || req.body?.ref, 100);
+  if (ref) {
+    const [rows] = await db.query('SELECT * FROM orders WHERE transaction_reference = ? LIMIT 1', [ref]);
+    if (rows[0]) await syncPayment(rows[0], { force: true });
   }
-
-  const event = req.body;
-  const ref = cleanText(event?.data?.ref, 100);
-
-  if (event?.kind !== 'transaction:processed' || !ref) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid or unsupported webhook event.',
-    });
-  }
-
-  const [rows] = await db.query(
-    'SELECT * FROM orders WHERE transaction_reference = ? LIMIT 1',
-    [ref],
-  );
-
-  if (rows[0]) {
-    await syncPayment(rows[0], { force: true });
-  }
-
-  return res.json({ success: true });
+  res.json({ success: true });
 }));
 
 /* =========================================================
