@@ -734,7 +734,14 @@ function verifyAdminSession(req, res, next) {
 
 app.get('/robots.txt', (_req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /admin\nDisallow: /api/\n'));
 
-app.use('/api', ready);
+app.use(
+  express.json({
+    // Store the rawBody buffer on the request
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.head('/api/paypack/webhook', (_req, res) => {
   res.sendStatus(200);
 });
@@ -934,53 +941,24 @@ app.post('/api/orders/track', trackLimiter, ah(async (req, res) => {
 }));
 
 // Paypack calls this when a payment finishes. We never trust the body: we re-check with Paypack.
-app.post('/api/paypack/webhook', ah(async (req, res) => {
-  const secret = process.env.PAYPACK_WEBHOOK_SIGN_KEY;
-  const signature = req.get('x-paypack-signature');
+app.post('/api/paypack/webhook', async (req, res) => {
+  //Extract X-Paypack-Signature headers from the request
+  const requestHash = req.get('X-Paypack-Signature');
 
-  if (!secret || !signature || !req.rawBody) {
-    return res.status(401).json({
-      success: false,
-      error: 'Webhook signature configuration is missing.',
-    });
+  //secret which you can find on your registered webhook
+  const secret = os.GetEnv("PAYPACK_WEBHOOK_SIGN_KEY");
+
+  //Create a hash based on the parsed body
+  const hash = crypto.createHmac('sha256', secret).update(req.rawBody).digest('base64');
+
+  // Compare the created hash with the value of the X-Paypack-Signature headers
+  if (hash === requestHash || req.Method != "HEAD") {
+    //Do your work here!
+    console.log('Webhook is originating from Paypack');
+  } else {
+    console.log('Signature is invalid, rejected');
   }
-
-  const expected = crypto
-    .createHmac('sha256', secret)
-    .update(req.rawBody)
-    .digest('base64');
-
-  const expectedBuffer = Buffer.from(expected);
-  const signatureBuffer = Buffer.from(signature);
-
-  if (
-    expectedBuffer.length !== signatureBuffer.length ||
-    !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)
-  ) {
-    return res.status(401).json({ success: false });
-  }
-
-  const event = req.body;
-  const ref = cleanText(event?.data?.ref, 100);
-
-  if (event?.kind !== 'transaction:processed' || !ref) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid or unsupported webhook event.',
-    });
-  }
-
-  const [rows] = await db.query(
-    'SELECT * FROM orders WHERE transaction_reference = ? LIMIT 1',
-    [ref],
-  );
-
-  if (rows[0]) {
-    await syncPayment(rows[0], { force: true });
-  }
-
-  return res.json({ success: true });
-}));
+});
 
 /* =========================================================
    ADMIN API
