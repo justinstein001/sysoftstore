@@ -23,7 +23,6 @@ const crypto = require('crypto');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const os = require('node:os');
 
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
@@ -33,7 +32,7 @@ const publicDir = path.join(__dirname, 'public');
 const uploadsDir = path.join(__dirname, 'uploads');
 
 const HOLD_MINUTES = Math.max(5, Number(process.env.ORDER_HOLD_MINUTES || 15)); // unpaid orders are released after this
-const LOW_STOCK = Number(process.env.LOW_STOCK_THRESHOLD || 30);
+const LOW_STOCK = Number(process.env.LOW_STOCK_THRESHOLD || 5);
 const MIN_AMOUNT = 100;            // RWF, Paypack minimum
 const MAX_AMOUNT = 10000000;       // RWF
 const JWT_SECRET = process.env.JWT_SECRET || '';
@@ -78,13 +77,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Paypack-Secret'],
 }));
-//changed
-app.use(express.json({
-  limit: '1mb',
-  verify: (req, res, buf) => {
-    req.rawBody = Buffer.from(buf);
-  },
-}));
+app.use(express.json({ limit: '1mb' }));
 
 /* ---- tiny in-memory rate limiter (no extra dependency; per server instance) ---- */
 const clientIp = req => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
@@ -743,6 +736,7 @@ app.use(
     },
   })
 );
+
 app.head('/api/paypack/webhook', (_req, res) => {
   res.sendStatus(200);
 });
@@ -788,9 +782,12 @@ app.get('/api/products', publicLimiter, ah(async (req, res) => {
   const params = [];
 
   if (search) {
-    where.push('(name LIKE ? OR description LIKE ? OR category LIKE ?)');
-    const like = `%${escapeLike(search)}%`;
-    params.push(like, like, like);
+    // Every word must appear somewhere (name, description or category), in any order.
+    for (const word of search.split(/\s+/).filter(Boolean).slice(0, 6)) {
+      where.push('(name LIKE ? OR description LIKE ? OR category LIKE ?)');
+      const like = `%${escapeLike(word)}%`;
+      params.push(like, like, like);
+    }
   }
   if (category && category !== 'All') { where.push('category = ?'); params.push(category); }
   if (isTrue(req.query.in_stock)) where.push('stock_quantity > 0');
@@ -948,7 +945,7 @@ app.post('/api/paypack/webhook', async (req, res) => {
 
   //secret which you can find on your registered webhook
   const secret = os.GetEnv("PAYPACK_WEBHOOK_SIGN_KEY");
-
+//changed by j
   //Create a hash based on the parsed body
   const hash = crypto.createHmac('sha256', secret).update(req.rawBody).digest('base64');
 
@@ -1006,7 +1003,7 @@ app.get('/api/admin/stats', verifyAdminSession, ah(async (_req, res) => {
      WHERE o.payment_status = 'COMPLETED'
      GROUP BY i.product_id, i.product_name ORDER BY qty DESC LIMIT 5`,
   );
-  const [[products]] = await db.query('SELECT COUNT(*) AS n,COALESCE(SUM(stock_quantity <= 30 AND is_active = 1), 0) AS low,COALESCE(SUM(stock_quantity = 0 AND is_active = 1), 0) AS out_of_stock FROM products', [LOW_STOCK]);
+  const [[products]] = await db.query('SELECT COUNT(*) AS n, COALESCE(SUM(stock_quantity <= ? AND is_active = 1), 0) AS low, COALESCE(SUM(stock_quantity = 0 AND is_active = 1), 0) AS out FROM products', [LOW_STOCK]);
 
   res.json({
     success: true,
@@ -1019,7 +1016,7 @@ app.get('/api/admin/stats', verifyAdminSession, ah(async (_req, res) => {
     last24h: { orders: Number(today.n), amount: Number(today.amount) },
     daily: days.map(row => ({ day: String(row.day instanceof Date ? row.day.toISOString() : row.day).slice(0, 10), orders: Number(row.n), amount: Number(row.amount) })),
     topProducts: top.map(row => ({ name: row.name, quantity: Number(row.qty), amount: Number(row.amount) })),
-    products: { total: Number(products.n), lowStock: Number(products.low), outOfStock: Number(products.out_of_stock), threshold: LOW_STOCK },
+    products: { total: Number(products.n), lowStock: Number(products.low), outOfStock: Number(products.out), threshold: LOW_STOCK },
   });
 }));
 
