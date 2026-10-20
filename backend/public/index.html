@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>SYSOFT Store | Quality tech, paid with Mobile Money</title>
+  <title>SYSOFT Store | Everything you need, one smart store</title>
   <meta name="description" content="Shop quality electronics and everyday essentials at SYSOFT Store in Rwanda. Pay securely with MTN MoMo or Airtel Money, track your order, and get delivery support.">
   <meta name="theme-color" content="#0b5bd3">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="SYSOFT Store | Quality tech, paid with Mobile Money">
+  <meta property="og:title" content="SYSOFT Store | Everything you need, one smart store">
   <meta property="og:description" content="Electronics and everyday essentials. Pay with Mobile Money, track your order, get delivery support.">
   <meta property="og:site_name" content="SYSOFT Store">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"Store","name":"SYSOFT Store","description":"Quality electronics and everyday essentials in Rwanda, paid with Mobile Money.","telephone":"+250798557207","email":"amahorojustin04@gmail.com","address":{"@type":"PostalAddress","addressCountry":"RW"},"paymentAccepted":"MTN Mobile Money, Airtel Money","currenciesAccepted":"RWF"}</script>
@@ -482,6 +482,7 @@
           <div class="cta">
             <a class="btn btn-light" href="#catalog">Shop products <svg class="i"><use href="#i-arrow"/></svg></a>
             <button class="btn btn-line" type="button" data-action="track"><svg class="i"><use href="#i-package"/></svg>Track an order</button>
+            <a class="btn btn-light" href="#catalog">Visit Company <svg class="i"><use href="#i-arrow"/></svg></a>
           </div>
         </div>
         <div class="spot-wrap" id="spot" aria-live="polite">
@@ -579,7 +580,7 @@
 
     /* ============ setup ============ */
     // Use this server when testing locally; otherwise the live store API.
-    const BACKEND_API = 'https://sysoftstore.vercel.app';
+    const BACKEND_API ='https://sysoftstore.vercel.app';
 
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -1241,8 +1242,8 @@
         case 'pmadd': if (addToCart(id, Number($('#pmQtyN').textContent), { silent: false })) closeLayer('productLayer'); break;
         case 'buynow': if (addToCart(id, Number($('#pmQtyN').textContent), { silent: true })) { closeLayer('productLayer'); startCheckout(); } break;
         case 'share': {
-          const p = state.catalog.get(id), text = `${p.name} · ${money(p.price)} at SYSOFT Store`;
-          try { if (navigator.share) await navigator.share({ title: p.name, text, url: location.href }); else { await navigator.clipboard.writeText(`${text} ${location.href}`); toast('Link copied'); } } catch { /* cancelled */ }
+          const p = state.catalog.get(id), text = `${p.name} · ${money(p.price)} at SYSOFT Store`, link = `${location.origin}${location.pathname}?product=${id}`;
+          try { if (navigator.share) await navigator.share({ title: p.name, text, url: link }); else { await navigator.clipboard.writeText(`${text} ${link}`); toast('Link copied'); } } catch { /* cancelled */ }
           break;
         }
         default: break;
@@ -1270,7 +1271,13 @@
       applyTheme(theme);
       loadCart(); renderCartBits(); updateSavedCount();
 
+      // Links such as /?product=12, /?search=speaker or /?category=Audio (used by the website assistant and by shared links)
+      const params = new URLSearchParams(location.search);
+      if (params.get('search')) { state.filters.search = params.get('search').slice(0, 100); $('#search').value = state.filters.search; $('#searchBox').classList.add('has-text'); }
+      if (params.get('category')) state.filters.category = params.get('category').slice(0, 60);
       loadProducts(); loadCategories(); loadFeatured();
+      const linkedProduct = Number(params.get('product'));
+      if (Number.isInteger(linkedProduct) && linkedProduct > 0) openProduct(linkedProduct);
       api('/api/config').then(config => {
         state.config = { ...state.config, ...config };
         const c = state.config.contact;
