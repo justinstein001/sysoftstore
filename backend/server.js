@@ -945,8 +945,8 @@ app.post('/api/paypack/webhook', async (req, res) => {
   const requestHash = req.get('X-Paypack-Signature');
 
   //secret which you can find on your registered webhook
-  const secret = process.env.PAYPACK_WEBHOOK_SIGN_KEY;
-//changed by j
+  const secret = os.GetEnv("PAYPACK_WEBHOOK_SIGN_KEY");
+
   //Create a hash based on the parsed body
   const hash = crypto.createHmac('sha256', secret).update(req.rawBody).digest('base64');
 
