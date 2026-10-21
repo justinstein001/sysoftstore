@@ -945,7 +945,7 @@ app.post('/api/paypack/webhook', async (req, res) => {
   const requestHash = req.get('X-Paypack-Signature');
 
   //secret which you can find on your registered webhook
-  const secret = os.GetEnv("PAYPACK_WEBHOOK_SIGN_KEY");
+  const secret = process.env.PAYPACK_WEBHOOK_SIGN_KEY;
 //changed by j
   //Create a hash based on the parsed body
   const hash = crypto.createHmac('sha256', secret).update(req.rawBody).digest('base64');
@@ -1004,7 +1004,7 @@ app.get('/api/admin/stats', verifyAdminSession, ah(async (_req, res) => {
      WHERE o.payment_status = 'COMPLETED'
      GROUP BY i.product_id, i.product_name ORDER BY qty DESC LIMIT 5`,
   );
-  const [[products]] = await db.query('SELECT COUNT(*) AS n, COALESCE(SUM(stock_quantity <= ? AND is_active = 1), 0) AS low, COALESCE(SUM(stock_quantity = 0 AND is_active = 1), 0) AS out FROM products', [LOW_STOCK]);
+  const [[products]] = await db.query('SELECT COUNT(*) AS n, COALESCE(SUM(stock_quantity <= ? AND is_active = 1), 0) AS low, COALESCE(SUM(stock_quantity = 0 AND is_active = 1), 0) AS out_of_stock FROM products', [LOW_STOCK]);
 
   res.json({
     success: true,
@@ -1017,7 +1017,7 @@ app.get('/api/admin/stats', verifyAdminSession, ah(async (_req, res) => {
     last24h: { orders: Number(today.n), amount: Number(today.amount) },
     daily: days.map(row => ({ day: String(row.day instanceof Date ? row.day.toISOString() : row.day).slice(0, 10), orders: Number(row.n), amount: Number(row.amount) })),
     topProducts: top.map(row => ({ name: row.name, quantity: Number(row.qty), amount: Number(row.amount) })),
-    products: { total: Number(products.n), lowStock: Number(products.low), outOfStock: Number(products.out), threshold: LOW_STOCK },
+    products: { total: Number(products.n), lowStock: Number(products.low), outOfStock: Number(products.out_of_stock), threshold: LOW_STOCK },
   });
 }));
 
