@@ -939,25 +939,54 @@ app.post('/api/orders/track', trackLimiter, ah(async (req, res) => {
   res.json({ success: true, order: describeOrder(current, items) });
 }));
 
-// Paypack calls this when a payment finishes. We never trust the body: we re-check with Paypack.
+
 app.post('/api/paypack/webhook', async (req, res) => {
-  //Extract X-Paypack-Signature headers from the request
-  const requestHash = req.get('X-Paypack-Signature');
+  try {
+    const requestHash = req.get('X-Paypack-Signature');
+    const secret = process.env.PAYPACK_WEBHOOK_SIGN_KEY;
 
-  //secret which you can find on your registered webhook
-  const secret = os.GetEnv("PAYPACK_WEBHOOK_SIGN_KEY");
+    // Reject requests missing required signature data.
+    if (!secret || !req.rawBody || !requestHash) {
+      console.error('Paypack webhook: missing signature data.');
+      return res.status(400).json({
+        success: false,
+        error: 'Missing webhook signature data.'
+      });
+    }
 
-  //Create a hash based on the parsed body
-  const hash = crypto.createHmac('sha256', secret).update(req.rawBody).digest('base64');
+    // Generate the expected signature.
+    const hash = crypto
+      .createHmac('sha256', secret)
+      .update(req.rawBody)
+      .digest('base64');
 
-  // Compare the created hash with the value of the X-Paypack-Signature headers
-  if (hash === requestHash || req.Method != "HEAD") {
-    //Do your work here!
-    console.log('Webhook is originating from Paypack');
-  } else {
-    console.log('Signature is invalid, rejected');
+    // Verify the signature before trusting the request.
+    const expected = Buffer.from(hash, 'utf8');
+    const received = Buffer.from(requestHash, 'utf8');
+
+    if (
+      expected.length !== received.length ||
+      !crypto.timingSafeEqual(expected, received)
+    ) {
+      console.error('Paypack webhook: invalid signature.');
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid webhook signature.'
+      });
+    }
+
+    console.log('Paypack webhook signature verified.');
+
+    // TODO: Verify the transaction status directly with Paypack
+    // and update the matching order only after confirmation.
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Paypack webhook error:', error.message);
+    return res.status(500).json({ success: false });
   }
 });
+
 
 /* =========================================================
    ADMIN API
